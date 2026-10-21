@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de QR Code</title>
+<meta name="theme-color" content="#2F6FEB">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="QR Code">
+<script>try{var t=localStorage.getItem('qr_theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F3F6FC;--surface:#FFFFFF;--surface2:#EEF2FA;--line:#E1E8F5;--line2:#CBD6EA;
+  --text:#0E1B36;--muted:#5B6A86;--accent:#2F6FEB;--accent2:#1F55C8;--accent-soft:#E8F0FE;--accent-ink:#1A4DB8;
+  --ok:#14804A;--ok-bg:#E3F6EC;--warn:#8A5300;--warn-bg:#FFF3D6;--err:#C42B2B;--err-bg:#FDE9E9;
+  --shadow:0 1px 2px rgba(14,27,54,.05),0 10px 30px rgba(31,85,200,.08);
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,Roboto,sans-serif;--mono:'SF Mono','Fira Code',Consolas,monospace;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0A111F;--surface:#111B30;--surface2:#17233D;--line:#22314F;--line2:#33466B;
+  --text:#EAF0FC;--muted:#97A6C4;--accent:#5B8DFF;--accent2:#3F73F0;--accent-soft:#16264A;--accent-ink:#9DBBFF;
+  --ok:#4FD39A;--ok-bg:#10301F;--warn:#F2C25B;--warn-bg:#352A10;--err:#FF7C7C;--err-bg:#3A1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A111F;--surface:#111B30;--surface2:#17233D;--line:#22314F;--line2:#33466B;
+  --text:#EAF0FC;--muted:#97A6C4;--accent:#5B8DFF;--accent2:#3F73F0;--accent-soft:#16264A;--accent-ink:#9DBBFF;
+  --ok:#4FD39A;--ok-bg:#10301F;--warn:#F2C25B;--warn-bg:#352A10;--err:#FF7C7C;--err-bg:#3A1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);color-scheme:dark;}}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.45}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.ic{width:1.1em;height:1.1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.17em;flex:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button{font-family:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1080px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(160deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#fff;font-size:18px;box-shadow:0 4px 12px rgba(47,111,235,.35)}
+.tag{font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border-radius:99px;padding:3px 9px}
+.grow{flex:1}
+.iconbtn{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:18px}
+.iconbtn:hover{color:var(--accent);border-color:var(--accent)}
+.shell{max-width:1080px;margin:0 auto;padding:24px 20px 48px;display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.stage{padding:20px;display:flex;flex-direction:column;gap:14px;position:sticky;top:78px}
+.qr-wrap{position:relative;width:100%;aspect-ratio:1;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--surface2)}
+.checker{position:absolute;inset:0;display:none;background-color:#fff;background-image:linear-gradient(45deg,#e5e9f2 25%,transparent 25%),linear-gradient(-45deg,#e5e9f2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e9f2 75%),linear-gradient(-45deg,transparent 75%,#e5e9f2 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+#previewCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:28px;font-size:14px;color:var(--muted)}
+.qr-wrap.is-empty .empty{display:flex}.qr-wrap.is-empty #previewCanvas{visibility:hidden}
+.statusrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:7px;border:0;border-radius:99px;padding:6px 12px;font-size:13px;font-weight:600}
+.pill i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.err{background:var(--err-bg);color:var(--err)}
+.meta{font-size:12px;color:var(--muted)}
+#msgs{display:flex;flex-direction:column;gap:6px}
+#msgs[hidden]{display:none}
+.msg{font-size:12.5px;line-height:1.45;padding:9px 11px;border-radius:10px;background:var(--warn-bg);color:var(--warn)}
+.msg.err{background:var(--err-bg);color:var(--err)}
+.dl{display:grid;grid-template-columns:1fr auto;gap:8px}
+select,input[type=text],textarea{width:100%;background:var(--surface);color:var(--text);border:1px solid var(--line2);border-radius:12px;padding:0 12px;font-family:var(--font);font-size:14px;height:44px;outline:none;transition:border-color .15s,box-shadow .15s}
+select{padding-right:8px}
+textarea{height:96px;padding:11px 12px;resize:vertical;line-height:1.45}
+select:focus,input[type=text]:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:linear-gradient(180deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(47,111,235,.3)}
+.btn.primary:hover:not(:disabled){color:#fff;filter:brightness(1.06)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.sm{height:34px;padding:0 12px;font-size:12.5px;border-radius:10px}
+.btn.danger:hover:not(:disabled){border-color:var(--err);color:var(--err)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.save{display:grid;grid-template-columns:1fr auto;gap:8px}
+.priv{font-size:11.5px;color:var(--muted);text-align:center}
+/* painel */
+.tabs{display:flex;gap:4px;padding:6px;margin:16px 16px 0;background:var(--surface2);border-radius:14px}
+.tabs button{white-space:nowrap;flex:1;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;padding:10px 6px;border-radius:10px}
+.tabs button[aria-selected=true]{background:var(--surface);color:var(--accent-ink);box-shadow:0 1px 3px rgba(14,27,54,.12)}
+.panel{padding:20px;display:flex;flex-direction:column;gap:22px}
+.panel[hidden]{display:none}
+.lbl{display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.45}
+.presets{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.preset{aspect-ratio:1;border-radius:12px;border:2px solid var(--line);padding:0;position:relative;overflow:hidden;background:var(--sw-bg)}
+.preset::after{content:'';position:absolute;inset:26%;border-radius:4px;background:var(--sw-fg)}
+.preset[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.colors{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cf{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:0 12px;height:44px}
+.cf:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.sw{position:relative;width:24px;height:24px;border-radius:7px;overflow:hidden;border:1px solid var(--line2);flex:none}
+.sw div{width:100%;height:100%}
+.sw input{position:absolute;inset:-3px;width:calc(100% + 6px);height:calc(100% + 6px);opacity:0;cursor:pointer;border:0;padding:0}
+.hex{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:13px}
+.sub{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:0 14px;height:48px;margin-top:10px;font-size:14px}
+.tog{position:relative;width:40px;height:22px;flex:none}
+.tog input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.tog span{position:absolute;inset:0;background:var(--line2);border-radius:22px;transition:background .2s}
+.tog span::before{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
+.tog input:checked+span{background:var(--accent)}.tog input:checked+span::before{transform:translateX(18px)}
+.tog input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.ec{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ec button{height:56px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);font-weight:700;font-size:14px;line-height:1.2}
+.ec button small{display:block;font-size:11.5px;font-weight:500}
+.ec button:hover{border-color:var(--accent)}
+.ec button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.drop{display:block;border:1.5px dashed var(--line2);border-radius:16px;padding:26px 16px;text-align:center;cursor:pointer;color:var(--muted);font-size:13.5px;transition:all .15s}
+.drop:hover,.drop.drag,.drop:focus-within{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop .ic{display:block;margin:0 auto 8px;font-size:26px}
+.lrow{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}
+.lrow img{width:44px;height:44px;object-fit:contain;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.lname{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:var(--muted)}
+.srow input{flex:1;accent-color:var(--accent)}.srow b{min-width:36px;text-align:right;color:var(--text)}
+.lib-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lib-head h2{font-size:15px}.acts{display:flex;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.lc{border:1px solid var(--line);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.lc canvas{width:100%;aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background:var(--surface2)}
+.ln{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lt{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.la{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.la .btn{height:30px;padding:0 6px;font-size:12px;border-radius:9px}
+.lib-empty{font-size:14px;color:var(--muted);padding:18px 4px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:90vw;box-shadow:var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%)}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr;padding:16px 14px 40px;gap:16px}
+  .stage{position:static;padding:16px}
+  .qr-wrap{max-width:380px;margin:0 auto}
+  .tabs{margin:12px 12px 0}.panel{padding:16px}
+  .tag{display:none}
+}
+@media (max-width:480px){#libCount{display:none}.tabs button{font-size:13px;padding:10px 2px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h3M21 17v4"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V3m0 0-4 4m4-4 4 4M4 21h16"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+<symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+</defs></svg>
+
+<header><div class="bar">
+  <div class="brand"><div class="logo"><svg class="ic" aria-hidden="true"><use href="#i-qr"/></svg></div><span>Gerador de QR Code</span><span class="tag">100% local</span></div>
+  <span class="grow"></span>
+  <button class="iconbtn" id="themeBtn" aria-label="Alternar tema claro e escuro" title="Tema"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg></button>
+</div></header>
+
+<main class="shell">
+  <!-- QR -->
+  <section class="card stage" aria-label="Resultado">
+    <div class="qr-wrap" id="qrWrap">
+      <div class="checker" id="checker"></div>
+      <canvas id="previewCanvas" width="360" height="360" role="img" aria-label="Pré-visualização do QR Code"></canvas>
+      <div class="empty" id="emptyMsg">Digite um texto ou link para gerar o QR Code.</div>
+    </div>
+    <div class="statusrow"><button class="pill ok" id="statusBtn" aria-expanded="false" aria-controls="msgs"><i></i><span id="statusTxt">Lê bem</span></button><span class="meta" id="verTxt"></span></div>
+    <div id="msgs" hidden aria-live="polite"></div>
+    <div class="dl">
+      <div><label class="sr" for="exportFmt">Formato de download</label>
+      <select id="exportFmt"><option value="svg">SVG · vetor (gráfica)</option><option value="512">PNG · 512 px</option><option value="1024" selected>PNG · 1024 px</option><option value="2048">PNG · 2048 px</option><option value="4096">PNG · 4096 px</option></select></div>
+      <button class="btn primary" id="downloadBtn"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg>Baixar</button>
+    </div>
+    <div class="row2">
+      <button class="btn" id="copyBtn"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copiar</button>
+      <button class="btn" id="shareBtn"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg>Enviar</button>
+    </div>
+    <div class="save">
+      <label class="sr" for="qrName">Nome para a biblioteca</label>
+      <input type="text" id="qrName" placeholder="Nome para salvar (ex.: Cardápio)" maxlength="60" autocomplete="off">
+      <button class="btn" id="saveBtn"><svg class="ic" aria-hidden="true"><use href="#i-save"/></svg>Salvar</button>
+    </div>
+    <p class="priv"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Tudo é feito neste aparelho. Nada é enviado.</p>
+  </section>
+
+  <!-- Opções -->
+  <section class="card" aria-label="Opções">
+    <div class="tabs" role="tablist" aria-label="Seções">
+      <button role="tab" id="t-conteudo" data-tab="conteudo" aria-selected="true" aria-controls="p-conteudo">Conteúdo</button>
+      <button role="tab" id="t-estilo" data-tab="estilo" aria-selected="false" aria-controls="p-estilo">Estilo</button>
+      <button role="tab" id="t-logo" data-tab="logo" aria-selected="false" aria-controls="p-logo">Logo</button>
+      <button role="tab" id="t-lib" data-tab="lib" aria-selected="false" aria-controls="p-lib">Biblioteca <span id="libCount"></span></button>
+    </div>
+
+    <div class="panel" id="p-conteudo" role="tabpanel" aria-labelledby="t-conteudo">
+      <div>
+        <label class="lbl" for="qrInput">Texto ou link</label>
+        <textarea id="qrInput" placeholder="https://exemplo.com.br" spellcheck="false">https://exemplo.com.br</textarea>
+        <div class="hint" id="capHint"></div>
+      </div>
+      <div>
+        <div class="lbl" id="ec-lbl">Correção de erros</div>
+        <div class="ec" role="group" aria-labelledby="ec-lbl">
+          <button class="ec-btn" data-ec="L" aria-pressed="false">L<small>7%</small></button>
+          <button class="ec-btn" data-ec="M" aria-pressed="false">M<small>15%</small></button>
+          <button class="ec-btn" data-ec="Q" aria-pressed="false">Q<small>25%</small></button>
+          <button class="ec-btn" data-ec="H" aria-pressed="true">H<small>30%</small></button>
+        </div>
+        <p class="hint">Quanto maior, mais o QR aguenta sujeira, dobras e logo no centro. Use H com logo.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="p-estilo" role="tabpanel" aria-labelledby="t-estilo" hidden>
+      <div>
+        <div class="lbl" id="pre-lbl">Paletas prontas</div>
+        <div class="presets" role="group" aria-labelledby="pre-lbl">
+          <button class="preset" data-fg="#000000" data-bg="#FFFFFF" style="--sw-fg:#000;--sw-bg:#fff" aria-label="Clássico: preto sobre branco" title="Clássico"></button>
+          <button class="preset" data-fg="#1D4ED8" data-bg="#FFFFFF" style="--sw-fg:#1D4ED8;--sw-bg:#fff" aria-label="Azul sobre branco" title="Azul"></button>
+          <button class="preset" data-fg="#0B1F4D" data-bg="#EEF4FF" style="--sw-fg:#0B1F4D;--sw-bg:#EEF4FF" aria-label="Marinho sobre azul claro" title="Marinho"></button>
+          <button class="preset" data-fg="#0B6B3A" data-bg="#FFFFFF" style="--sw-fg:#0B6B3A;--sw-bg:#fff" aria-label="Verde sobre branco" title="Verde"></button>
+          <button class="preset" data-fg="#1F2937" data-bg="#F3F4F6" style="--sw-fg:#1F2937;--sw-bg:#F3F4F6" aria-label="Grafite sobre cinza claro" title="Grafite"></button>
+          <button class="preset" data-fg="#7F1D1D" data-bg="#FFF5F5" style="--sw-fg:#7F1D1D;--sw-bg:#FFF5F5" aria-label="Vinho sobre rosa claro" title="Vinho"></button>
+        </div>
+      </div>
+      <div>
+        <div class="lbl" id="cores-lbl">Cores personalizadas</div>
+        <div class="colors" role="group" aria-labelledby="cores-lbl">
+          <div><label class="sub" for="fgHex">Módulos</label><div class="cf"><div class="sw"><div id="fgFace" style="background:#000"></div><input type="color" id="fgPicker" value="#000000" aria-label="Escolher cor dos módulos"></div><input class="hex" id="fgHex" value="#000000" maxlength="7" spellcheck="false" autocomplete="off"></div></div>
+          <div><label class="sub" for="bgHex">Fundo</label><div class="cf"><div class="sw"><div id="bgFace" style="background:#fff"></div><input type="color" id="bgPicker" value="#ffffff" aria-label="Escolher cor do fundo"></div><input class="hex" id="bgHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocomplete="off"></div></div>
+        </div>
+        <div class="toggle"><span id="trans-lbl">Fundo transparente</span><label class="tog"><input type="checkbox" id="transToggle" role="switch" aria-labelledby="trans-lbl"><span></span></label></div>
+      </div>
+    </div>
+
+    <div class="panel" id="p-logo" role="tabpanel" aria-labelledby="t-logo" hidden>
+      <div>
+        <div class="lbl">Logo no centro</div>
+        <label class="drop" id="dropZone"><input type="file" id="logoInput" accept="image/*"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg>Clique, arraste ou cole uma imagem</label>
+        <div id="logoExtra" style="display:none">
+          <div class="lrow"><img id="logoThumb" src="" alt="Prévia da logo"><div class="lname" id="logoName"></div><button class="btn sm danger" id="removeLogo">Remover</button></div>
+          <div class="srow"><label for="logoSize">Tamanho</label><input type="range" id="logoSize" min="10" max="40" value="25" step="1"><b id="sizeVal">25%</b></div>
+        </div>
+        <p class="hint">Dica: logos com fundo transparente ficam melhores. Até uns 25% o QR continua lendo bem.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="p-lib" role="tabpanel" aria-labelledby="t-lib" hidden>
+      <div class="lib-head"><h2>Seus QR Codes salvos</h2>
+        <div class="acts"><button class="btn sm" id="libExport">Exportar backup</button><button class="btn sm" id="libImport">Importar backup</button><input type="file" id="libFile" accept=".json,application/json" hidden></div></div>
+      <div class="grid" id="libGrid"></div>
+    </div>
+  </section>
+</main>
+
+<canvas id="offscreenCanvas" style="display:none"></canvas>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* Codificador de QR Code (modo byte/UTF-8, versões 1–40, níveis L/M/Q/H). Sem dependências. */
+const QR = (function () {
+  'use strict';
+  const ECC_PER_BLOCK = {
+    L: [-1,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    M: [-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+    Q: [-1,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    H: [-1,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]
+  };
+  const NUM_BLOCKS = {
+    L: [-1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+    M: [-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+    Q: [-1,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+    H: [-1,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]
+  };
+  const FORMAT_BITS = { L: 1, M: 0, Q: 3, H: 2 };
+
+  function rawModules(ver) {
+    let r = (16 * ver + 128) * ver + 64;
+    if (ver >= 2) { const a = Math.floor(ver / 7) + 2; r -= (25 * a - 10) * a - 55; if (ver >= 7) r -= 36; }
+    return r;
+  }
+  function dataCodewords(ver, ecl) { return Math.floor(rawModules(ver) / 8) - ECC_PER_BLOCK[ecl][ver] * NUM_BLOCKS[ecl][ver]; }
+  function gfMul(x, y) { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z; }
+  function rsDivisor(deg) {
+    const res = new Array(deg).fill(0); res[deg - 1] = 1; let root = 1;
+    for (let i = 0; i < deg; i++) { for (let j = 0; j < deg; j++) { res[j] = gfMul(res[j], root); if (j + 1 < deg) res[j] ^= res[j + 1]; } root = gfMul(root, 2); }
+    return res;
+  }
+  function rsRemainder(data, div) {
+    const res = div.map(() => 0);
+    for (const b of data) { const f = b ^ res.shift(); res.push(0); div.forEach((c, i) => res[i] ^= gfMul(c, f)); }
+    return res;
+  }
+  function utf8(str) { return Array.from(new TextEncoder().encode(str)); }
+  function bit(x, i) { return ((x >>> i) & 1) !== 0; }
+
+  function encode(text, ecl) {
+    const bytes = utf8(text);
+    let ver = 0;
+    for (let v = 1; v <= 40; v++) {
+      const cc = v < 10 ? 8 : 16;
+      if (bytes.length >= (1 << cc)) continue;
+      if (4 + cc + 8 * bytes.length <= dataCodewords(v, ecl) * 8) { ver = v; break; }
+    }
+    if (!ver) throw new RangeError('Texto grande demais');
+    const bits = [];
+    const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    push(4, 4); push(bytes.length, ver < 10 ? 8 : 16); bytes.forEach(b => push(b, 8));
+    const cap = dataCodewords(ver, ecl) * 8;
+    push(0, Math.min(4, cap - bits.length));
+    push(0, (8 - bits.length % 8) % 8);
+    for (let pad = 0xEC; bits.length < cap; pad ^= 0xEC ^ 0x11) push(pad, 8);
+    const data = new Array(bits.length / 8).fill(0);
+    bits.forEach((b, i) => data[i >>> 3] |= b << (7 - (i & 7)));
+
+    /* ECC + intercalação */
+    const nb = NUM_BLOCKS[ecl][ver], eccLen = ECC_PER_BLOCK[ecl][ver], raw = Math.floor(rawModules(ver) / 8);
+    const nShort = nb - raw % nb, shortLen = Math.floor(raw / nb), div = rsDivisor(eccLen), blocks = [];
+    for (let i = 0, k = 0; i < nb; i++) {
+      const dat = data.slice(k, k + shortLen - eccLen + (i < nShort ? 0 : 1)); k += dat.length;
+      const ecc = rsRemainder(dat, div); if (i < nShort) dat.push(0); blocks.push(dat.concat(ecc));
+    }
+    const all = [];
+    for (let i = 0; i < blocks[0].length; i++) blocks.forEach((bl, j) => { if (i !== shortLen - eccLen || j >= nShort) all.push(bl[i]); });
+
+    /* matriz */
+    const size = ver * 4 + 17;
+    const mod = Array.from({ length: size }, () => new Array(size).fill(false));
+    const fn = Array.from({ length: size }, () => new Array(size).fill(false));
+    const setF = (x, y, d) => { mod[y][x] = d; fn[y][x] = true; };
+    for (let i = 0; i < size; i++) { setF(6, i, i % 2 === 0); setF(i, 6, i % 2 === 0); }
+    const finder = (cx, cy) => { for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const d = Math.max(Math.abs(dx), Math.abs(dy)), x = cx + dx, y = cy + dy; if (x >= 0 && x < size && y >= 0 && y < size) setF(x, y, d !== 2 && d !== 4); } };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    let pos = [];
+    if (ver > 1) { const na = Math.floor(ver / 7) + 2, step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (na * 2 - 2)) * 2; pos = [6]; for (let p = size - 7; pos.length < na; p -= step) pos.splice(1, 0, p); }
+    pos.forEach((cx, i) => pos.forEach((cy, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === pos.length - 1) || (i === pos.length - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) setF(cx + dx, cy + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+    const drawFormat = (mask) => {
+      const d = FORMAT_BITS[ecl] << 3 | mask; let rem = d;
+      for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      const b = (d << 10 | rem) ^ 0x5412;
+      for (let i = 0; i <= 5; i++) setF(8, i, bit(b, i));
+      setF(8, 7, bit(b, 6)); setF(8, 8, bit(b, 7)); setF(7, 8, bit(b, 8));
+      for (let i = 9; i < 15; i++) setF(14 - i, 8, bit(b, i));
+      for (let i = 0; i < 8; i++) setF(size - 1 - i, 8, bit(b, i));
+      for (let i = 8; i < 15; i++) setF(8, size - 15 + i, bit(b, i));
+      setF(8, size - 8, true);
+    };
+    drawFormat(0);
+    if (ver >= 7) {
+      let rem = ver; for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+      const b = ver << 12 | rem;
+      for (let i = 0; i < 18; i++) { const c = bit(b, i), a = size - 11 + i % 3, d = Math.floor(i / 3); setF(a, d, c); setF(d, a, c); }
+    }
+    /* dados em zigue-zague */
+    for (let i = 0, right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+        const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+        if (!fn[y][x] && i < all.length * 8) { mod[y][x] = bit(all[i >>> 3], 7 - (i & 7)); i++; }
+      }
+    }
+    /* máscara com menor penalidade */
+    const maskFn = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x, y) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+      (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => x * y % 2 + x * y % 3 === 0,
+      (x, y) => (x * y % 2 + x * y % 3) % 2 === 0, (x, y) => ((x + y) % 2 + x * y % 3) % 2 === 0];
+    const applyMask = (m) => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && maskFn[m](x, y)) mod[y][x] = !mod[y][x]; };
+    const penalty = () => {
+      let p = 0;
+      const lines = [];
+      for (let y = 0; y < size; y++) lines.push(mod[y]);
+      for (let x = 0; x < size; x++) lines.push(mod.map(r => r[x]));
+      const pat1 = [1,0,1,1,1,0,1,0,0,0,0], pat2 = [0,0,0,0,1,0,1,1,1,0,1];
+      for (const ln of lines) {
+        let run = 1;
+        for (let i = 1; i <= size; i++) { if (i < size && ln[i] === ln[i - 1]) run++; else { if (run >= 5) p += 3 + (run - 5); run = 1; } }
+        for (let i = 0; i + 11 <= size; i++) { let a = true, b = true; for (let k = 0; k < 11; k++) { const v = ln[i + k] ? 1 : 0; if (v !== pat1[k]) a = false; if (v !== pat2[k]) b = false; if (!a && !b) break; } if (a || b) p += 40; }
+      }
+      for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = mod[y][x]; if (c === mod[y][x + 1] && c === mod[y + 1][x] && c === mod[y + 1][x + 1]) p += 3; }
+      let dark = 0; for (const r of mod) for (const c of r) if (c) dark++;
+      p += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+      return p;
+    };
+    let best = 0, bestP = Infinity;
+    for (let m = 0; m < 8; m++) { drawFormat(m); applyMask(m); const p = penalty(); if (p < bestP) { bestP = p; best = m; } applyMask(m); }
+    drawFormat(best); applyMask(best);
+    return { size, version: ver, mask: best, modules: mod };
+  }
+  /* maior quantidade de bytes cabível no nível */
+  function capacity(ecl) { return Math.floor((dataCodewords(40, ecl) * 8 - 4 - 16) / 8); }
+  return { encode, capacity };
+})();
+
+
+</script>
+<script>
+
+'use strict';
+const $ = id => document.getElementById(id);
+const ECC_FRAC = { L: .07, M: .15, Q: .25, H: .30 };
+const LS_STATE = 'qr_state_v2', LS_LIB = 'qr_lib_v2';
+const DEFAULT = { text: 'https://exemplo.com.br', fg: '#000000', bg: '#FFFFFF', trans: false, ec: 'H', lSz: 25, logo: null, logoName: '' };
+let S = { ...DEFAULT };
+let LI = null;               /* imagem da logo decodificada */
+let currentErr = null;       /* erro atual do codificador */
+const imgCache = new Map();  /* cache de logos da biblioteca */
+
+/* ---------- utilidades ---------- */
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200); }
+function lsGet(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+function normHex(h) { h = String(h || '').trim(); if (/^[0-9a-f]{6}$/i.test(h)) h = '#' + h; if (/^#[0-9a-f]{3}$/i.test(h)) h = '#' + h.slice(1).split('').map(c => c + c).join(''); return /^#[0-9a-f]{6}$/i.test(h) ? h.toUpperCase() : null; }
+function lum(hex) { const c = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+function slug(s) { return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^https?:\/\/(www\.)?/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'qr-code'; }
+function fileBase(name, text) { const n = (name || '').trim(); return 'qr-' + slug(n || text); }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+/* ---------- matriz do QR ---------- */
+function getMatrix(text, ec) {
+  text = String(text || '').trim();
+  if (!text) return null;
+  return QR.encode(text, ec);
+}
+/* geometria comum a canvas e SVG */
+function geometry(q, sz, logo, lSz) {
+  const quiet = 4, total = q.size + quiet * 2;
+  const mod = Math.max(1, Math.floor(sz / total));
+  const off = Math.floor((sz - mod * q.size) / 2);
+  const side = mod * q.size;
+  let lg = null;
+  if (logo && logo.w > 0 && logo.h > 0) {
+    const L = side * lSz / 100, r = logo.w / logo.h;
+    const w = r >= 1 ? L : L * r, h = r >= 1 ? L / r : L, pad = L * .10;
+    lg = { x: off + (side - w) / 2, y: off + (side - h) / 2, w, h, pad, rad: L * .08, frac: ((w + 2 * pad) * (h + 2 * pad)) / (side * side) };
+  }
+  return { mod, off, side, lg, total };
+}
+
+function draw(canvas, sz, st, logoImg, matrix) {
+  canvas.width = sz; canvas.height = sz;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, sz, sz);
+  if (!matrix) return;
+  const g = geometry(matrix, sz, logoImg && { w: logoImg.naturalWidth || logoImg.width, h: logoImg.naturalHeight || logoImg.height }, st.lSz);
+  if (!st.trans) { ctx.fillStyle = st.bg; ctx.fillRect(0, 0, sz, sz); }
+  ctx.fillStyle = st.fg;
+  for (let y = 0; y < matrix.size; y++) {
+    let x = 0;
+    while (x < matrix.size) {
+      if (!matrix.modules[y][x]) { x++; continue; }
+      let x2 = x; while (x2 < matrix.size && matrix.modules[y][x2]) x2++;
+      ctx.fillRect(g.off + x * g.mod, g.off + y * g.mod, (x2 - x) * g.mod, g.mod);
+      x = x2;
+    }
+  }
+  if (g.lg && logoImg) {
+    const l = g.lg;
+    ctx.save();
+    rr(ctx, l.x - l.pad, l.y - l.pad, l.w + 2 * l.pad, l.h + 2 * l.pad, l.rad + l.pad);
+    ctx.fillStyle = st.trans ? '#FFFFFF' : st.bg; ctx.fill(); ctx.restore();
+    ctx.save(); rr(ctx, l.x, l.y, l.w, l.h, l.rad); ctx.clip(); ctx.drawImage(logoImg, l.x, l.y, l.w, l.h); ctx.restore();
+  }
+}
+function rr(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+function buildSVG(st, logoSrc, logoImg, matrix) {
+  const g = geometry(matrix, matrix.size + 8, logoImg && { w: logoImg.naturalWidth || logoImg.width, h: logoImg.naturalHeight || logoImg.height }, st.lSz);
+  /* no SVG a unidade é 1 módulo; recalcula a logo nessa escala */
+  const n = matrix.size, T = n + 8, side = n;
+  let lgx = '';
+  if (logoSrc && logoImg) {
+    const w0 = logoImg.naturalWidth || logoImg.width, h0 = logoImg.naturalHeight || logoImg.height, L = side * st.lSz / 100, r = w0 / h0;
+    const w = r >= 1 ? L : L * r, h = r >= 1 ? L / r : L, pad = L * .10, x = 4 + (side - w) / 2, y = 4 + (side - h) / 2, rad = L * .08 + pad;
+    lgx = `<rect x="${x - pad}" y="${y - pad}" width="${w + 2 * pad}" height="${h + 2 * pad}" rx="${rad}" fill="${st.trans ? '#FFFFFF' : st.bg}"/>` +
+          `<image href="${logoSrc}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"/>`;
+  }
+  let d = '';
+  for (let y = 0; y < n; y++) { let x = 0; while (x < n) { if (!matrix.modules[y][x]) { x++; continue; } let x2 = x; while (x2 < n && matrix.modules[y][x2]) x2++; d += `M${x + 4} ${y + 4}h${x2 - x}v1h-${x2 - x}z`; x = x2; } }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${T} ${T}" width="${T * 10}" height="${T * 10}" shape-rendering="crispEdges">` +
+    (st.trans ? '' : `<rect width="${T}" height="${T}" fill="${st.bg}"/>`) + `<path d="${d}" fill="${st.fg}"/>${lgx}</svg>`;
+}
+
+/* ---------- avisos ---------- */
+function computeMessages(matrix) {
+  const out = [];
+  if (currentErr) { out.push({ t: 'err', m: currentErr }); return out; }
+  if (!matrix) return out;
+  const ratio = S.trans ? contrast(S.fg, '#FFFFFF') : contrast(S.fg, S.bg);
+  if (!S.trans && lum(S.fg) >= lum(S.bg)) out.push({ t: 'warn', m: 'Os módulos estão mais claros que o fundo. Alguns leitores não conseguem ler QR invertido. Prefira módulos escuros sobre fundo claro.' });
+  else if (ratio < 4) out.push({ t: 'warn', m: `Contraste baixo (${ratio.toFixed(1)}:1). Escureça os módulos ou clareie o fundo para o QR ler bem.` });
+  if (S.trans) out.push({ t: 'warn', m: 'Fundo transparente: o QR só lê bem sobre um fundo claro e liso. Teste depois de aplicar.' });
+  if (LI) {
+    const g = geometry(matrix, 1000, { w: LI.naturalWidth || LI.width, h: LI.naturalHeight || LI.height }, S.lSz);
+    const limit = ECC_FRAC[S.ec] * 0.75;
+    if (g.lg && g.lg.frac > limit) out.push({ t: 'warn', m: `A logo cobre ${(g.lg.frac * 100).toFixed(0)}% do QR, acima do que o nível ${S.ec} tolera com folga. Diminua a logo ou use o nível H.` });
+  }
+  if (matrix.version >= 15) out.push({ t: 'warn', m: 'QR muito denso (muito texto). Pode ser difícil de ler em tamanhos pequenos. Se der, use um link mais curto.' });
+  if (!out.length) out.push({ t: 'ok', m: `✔ Pronto · versão ${matrix.version} (${matrix.size}×${matrix.size})` });
+  return out;
+}
+let msgsOpen = false;
+function renderMsgs(list) {
+  const errs = list.filter(x => x.t === 'err'), warns = list.filter(x => x.t === 'warn'), okm = list.find(x => x.t === 'ok');
+  const pill = $('statusBtn'), det = $('msgs');
+  const empty = !_matrix && !errs.length;
+  pill.className = 'pill ' + (errs.length ? 'err' : warns.length ? 'warn' : 'ok');
+  $('statusTxt').textContent = empty ? 'Aguardando texto' : errs.length ? 'Não coube' : warns.length ? `Atenção (${warns.length})` : 'Lê bem';
+  pill.style.visibility = empty ? 'hidden' : 'visible';
+  $('verTxt').textContent = _matrix ? `versão ${_matrix.version} · ${_matrix.size}×${_matrix.size}` : '';
+  const details = [...errs, ...warns];
+  det.innerHTML = details.map(x => `<div class="msg ${x.t}">${esc(x.m)}</div>`).join('');
+  det.hidden = !details.length || !(errs.length || msgsOpen);
+  pill.setAttribute('aria-expanded', String(!det.hidden));
+}
+$('statusBtn').addEventListener('click', () => { msgsOpen = !msgsOpen; renderMsgs(computeMessages(_matrix)); });
+
+/* ---------- estado, persistência e interface ---------- */
+let _matrix = null;
+function refresh(save = true) {
+  currentErr = null; _matrix = null;
+  try { _matrix = getMatrix(S.text, S.ec); }
+  catch (e) { currentErr = `Texto grande demais para o nível ${S.ec} (máximo ${QR.capacity(S.ec)} caracteres simples). Reduza o texto ou escolha um nível menor.`; }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cssSz = $('previewCanvas').clientWidth || 280;
+  const c = $('previewCanvas'); const px = Math.round(cssSz * dpr);
+  draw(c, px, S, LI, _matrix);
+  $('qrWrap').classList.toggle('is-empty', !_matrix);
+  $('checker').style.display = S.trans && _matrix ? 'block' : 'none';
+  c.setAttribute('aria-label', _matrix ? `QR Code de: ${S.text.slice(0, 80)}` : 'Nenhum QR Code gerado');
+  const dis = !_matrix;
+  ['downloadBtn', 'copyBtn', 'shareBtn', 'saveBtn'].forEach(id => $(id).disabled = dis);
+  renderMsgs(computeMessages(_matrix));
+  const used = new TextEncoder().encode(S.text.trim()).length;
+  $('capHint').textContent = used ? `${used} de ${QR.capacity(S.ec)} bytes (nível ${S.ec})` : '';
+  if (save) persist();
+}
+function persist() { lsSet(LS_STATE, S); }
+
+function syncColorUI() {
+  $('fgPicker').value = S.fg.toLowerCase(); $('fgHex').value = S.fg; $('fgFace').style.background = S.fg;
+  $('bgPicker').value = S.bg.toLowerCase(); $('bgHex').value = S.bg; $('bgFace').style.background = S.bg;
+  $('transToggle').checked = S.trans;
+  document.querySelectorAll('.ec-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.ec === S.ec));
+  document.querySelectorAll('.preset').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fg === S.fg && b.dataset.bg === S.bg && !S.trans)));
+  $('qrInput').value = S.text;
+  $('logoSize').value = S.lSz; $('sizeVal').textContent = S.lSz + '%';
+  if (S.logo) { $('logoThumb').src = S.logo; $('logoName').textContent = S.logoName || 'logo'; $('logoExtra').style.display = 'block'; }
+  else $('logoExtra').style.display = 'none';
+}
+function setColor(kind, raw, fromHexField) {
+  const h = normHex(raw); if (!h) return;
+  S[kind] = h; syncColorUI(); refresh();
+}
+$('qrInput').addEventListener('input', function () { S.text = this.value; refresh(); });
+$('fgPicker').addEventListener('input', function () { setColor('fg', this.value); });
+$('bgPicker').addEventListener('input', function () { setColor('bg', this.value); });
+['fg', 'bg'].forEach(k => {
+  const el = $(k + 'Hex');
+  el.addEventListener('input', function () { const h = normHex(this.value); if (h) { S[k] = h; $(k + 'Picker').value = h.toLowerCase(); $(k + 'Face').style.background = h; refresh(); } });
+  el.addEventListener('blur', function () { this.value = S[k]; });
+});
+$('transToggle').addEventListener('change', function () { S.trans = this.checked; refresh(); });
+document.querySelectorAll('.ec-btn').forEach(b => b.addEventListener('click', () => { S.ec = b.dataset.ec; syncColorUI(); refresh(); }));
+$('logoSize').addEventListener('input', function () { S.lSz = parseInt(this.value); $('sizeVal').textContent = S.lSz + '%'; refresh(); });
+
+/* ---------- logo: arrastar, colar, enviar; reduz para economizar espaço ---------- */
+function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+async function shrinkLogo(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImage(url);
+    let w = img.naturalWidth || 300, h = img.naturalHeight || 300;
+    const k = Math.min(1, 480 / Math.max(w, h)); w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/png');
+  } finally { URL.revokeObjectURL(url); }
+}
+async function setLogoFromFile(f) {
+  if (!f || !/^image\//.test(f.type)) { toast('Escolha um arquivo de imagem.'); return; }
+  try {
+    S.logo = await shrinkLogo(f); S.logoName = f.name || 'logo';
+    LI = await loadImage(S.logo);
+    if (S.ec !== 'H') { S.ec = 'H'; toast('Correção ajustada para H, o melhor nível para QR com logo.'); }
+    syncColorUI(); refresh();
+  } catch { toast('Não consegui ler essa imagem.'); }
+}
+$('logoInput').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; setLogoFromFile(f); });
+const dz = $('dropZone');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e => setLogoFromFile(e.dataTransfer.files[0]));
+document.addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])].find(x => /^image\//.test(x.type)); if (f) { e.preventDefault(); setLogoFromFile(f); } });
+$('removeLogo').addEventListener('click', () => { S.logo = null; S.logoName = ''; LI = null; syncColorUI(); refresh(); });
+
+/* ---------- exportar ---------- */
+function renderExport(sz) {
+  const oc = $('offscreenCanvas'); draw(oc, sz, S, LI, _matrix); return oc;
+}
+function canvasBlob(canvas) { return new Promise(res => canvas.toBlob(b => res(b), 'image/png')); }
+function saveBlob(blob, name) { const a = document.createElement('a'); const u = URL.createObjectURL(blob); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 3000); }
+async function makePNG(sz) {
+  try { const c = renderExport(sz); const b = await canvasBlob(c); c.width = c.height = 1; if (!b) throw 0; return b; }
+  catch { toast(`Seu aparelho não conseguiu gerar ${sz}×${sz}. Tente um tamanho menor.`); return null; }
+}
+$('downloadBtn').addEventListener('click', async () => {
+  const v = $('exportFmt').value, base = fileBase($('qrName').value, S.text);
+  if (v === 'svg') { saveBlob(new Blob([buildSVG(S, S.logo, LI, _matrix)], { type: 'image/svg+xml' }), base + '.svg'); toast('SVG baixado (vetor).'); return; }
+  const bl = await makePNG(parseInt(v)); if (bl) saveBlob(bl, base + '.png');
+});
+$('copyBtn').addEventListener('click', async () => {
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw 0;
+    const b = await makePNG(1024); if (!b) return;
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('QR copiado. Cole onde quiser.');
+  } catch { toast('Seu navegador não permitiu copiar a imagem. Use o botão PNG.'); }
+});
+$('shareBtn').addEventListener('click', async () => {
+  const b = await makePNG(1024); if (!b) return;
+  const f = new File([b], fileBase($('qrName').value, S.text) + '.png', { type: 'image/png' });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'QR Code' });
+    else { saveBlob(b, f.name); toast('Compartilhar não está disponível aqui; baixei o PNG.'); }
+  } catch (e) { if (e && e.name !== 'AbortError') toast('Não consegui compartilhar.'); }
+});
+/* 4096 px pode falhar em aparelhos com pouca memória: avisa antes */
+(function () { const low = (navigator.deviceMemory && navigator.deviceMemory <= 2) || /Android|iPhone|iPad/i.test(navigator.userAgent); if (low) { const o = [...$('exportFmt').options].find(x => x.value === '4096'); if (o) o.textContent = 'PNG · 4096 px (pesado no celular)'; } })();
+
+/* ---------- biblioteca ---------- */
+let LIB = lsGet(LS_LIB, []);
+const libSave = () => { if (!lsSet(LS_LIB, LIB)) toast('Sem espaço para salvar. Exclua itens ou exporte um backup.'); };
+function newId() { return 'q_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function currentEntry(name) { return { id: newId(), name, text: S.text.trim(), fg: S.fg, bg: S.bg, trans: S.trans, ec: S.ec, lSz: S.lSz, logo: S.logo, logoName: S.logoName, ts: Date.now() }; }
+$('saveBtn').addEventListener('click', () => {
+  const name = $('qrName').value.trim() || slug(S.text).replace(/-/g, ' ').slice(0, 30) || 'QR Code';
+  const ex = LIB.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (ex && confirm(`Já existe “${ex.name}”. Substituir?`)) { Object.assign(ex, currentEntry(name), { id: ex.id }); }
+  else if (ex) return;
+  else LIB.unshift(currentEntry(name));
+  libSave(); renderLib(); toast(`Salvo na biblioteca: ${name}`);
+});
+async function entryImage(e) {
+  if (!e.logo) return null; if (imgCache.has(e.logo)) return imgCache.get(e.logo);
+  try { const i = await loadImage(e.logo); imgCache.set(e.logo, i); return i; } catch { return null; }
+}
+async function renderLib() {
+  $('libCount').textContent = LIB.length ? `(${LIB.length})` : '';
+  const grid = $('libGrid');
+  if (!LIB.length) { grid.innerHTML = '<p class="lib-empty">Nada salvo ainda. Monte um QR, dê um nome e clique em Salvar.</p>'; return; }
+  grid.innerHTML = LIB.map(e => `<div class="lc" data-id="${esc(e.id)}"><canvas width="240" height="240" aria-label="QR ${esc(e.name)}"></canvas><div class="ln" title="${esc(e.name)}">${esc(e.name)}</div><div class="lt" title="${esc(e.text)}">${esc(e.text)}</div>
+    <div class="la"><button class="btn" data-a="open">Abrir</button><button class="btn" data-a="dup">Duplicar</button><button class="btn" data-a="dl">PNG</button><button class="btn danger" data-a="del">Excluir</button></div></div>`).join('');
+  for (const e of LIB) {
+    const cv = grid.querySelector(`[data-id="${CSS.escape(e.id)}"] canvas`); if (!cv) continue;
+    let m = null; try { m = getMatrix(e.text, e.ec); } catch {}
+    draw(cv, 240, e, await entryImage(e), m);
+  }
+}
+$('libGrid').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-a]'); if (!b) return;
+  const id = b.closest('.lc').dataset.id, e = LIB.find(x => x.id === id); if (!e) return;
+  const a = b.dataset.a;
+  if (a === 'open') {
+    S = { ...DEFAULT, text: e.text, fg: e.fg, bg: e.bg, trans: e.trans, ec: e.ec, lSz: e.lSz, logo: e.logo, logoName: e.logoName };
+    LI = await entryImage(e); $('qrName').value = e.name; syncColorUI(); refresh(); setTab('conteudo'); window.scrollTo({ top: 0, behavior: 'smooth' }); toast(`Aberto: ${e.name}`);
+  } else if (a === 'dup') { LIB.unshift({ ...e, id: newId(), name: e.name + ' (cópia)', ts: Date.now() }); libSave(); renderLib(); }
+  else if (a === 'del') { if (confirm(`Excluir “${e.name}” da biblioteca?`)) { LIB = LIB.filter(x => x.id !== id); libSave(); renderLib(); } }
+  else if (a === 'dl') {
+    let m; try { m = getMatrix(e.text, e.ec); } catch { toast('Esse QR não cabe mais.'); return; }
+    const oc = $('offscreenCanvas'); draw(oc, 1024, e, await entryImage(e), m); const bl = await canvasBlob(oc); if (bl) saveBlob(bl, fileBase(e.name, e.text) + '.png');
+  }
+});
+$('libExport').addEventListener('click', () => {
+  if (!LIB.length) { toast('A biblioteca está vazia.'); return; }
+  saveBlob(new Blob([JSON.stringify({ app: 'Gerador de QR Code', versao: 2, itens: LIB }, null, 1)], { type: 'application/json' }), 'biblioteca-qr-' + new Date().toISOString().slice(0, 10) + '.json');
+});
+$('libImport').addEventListener('click', () => $('libFile').click());
+$('libFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text()); const arr = Array.isArray(j) ? j : j.itens; if (!Array.isArray(arr)) throw 0;
+    let add = 0; const ids = new Set(LIB.map(x => x.id));
+    arr.forEach(x => { if (x && typeof x.text === 'string' && x.name && !ids.has(x.id)) { LIB.push({ id: x.id || newId(), name: String(x.name).slice(0, 60), text: x.text, fg: normHex(x.fg) || '#000000', bg: normHex(x.bg) || '#FFFFFF', trans: !!x.trans, ec: 'LMQH'.includes(x.ec) ? x.ec : 'H', lSz: Math.min(40, Math.max(10, +x.lSz || 25)), logo: typeof x.logo === 'string' && x.logo.startsWith('data:image/') ? x.logo : null, logoName: x.logoName || '', ts: x.ts || Date.now() }); add++; } });
+    libSave(); renderLib(); toast(`${add} QR importado(s).`);
+  } catch { toast('Arquivo inválido. Use um backup exportado por aqui.'); }
+});
+
+/* ---------- abas, paletas e tema ---------- */
+function setTab(t) {
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  ['conteudo', 'estilo', 'logo', 'lib'].forEach(x => { $('p-' + x).hidden = x !== t; });
+}
+document.querySelectorAll('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const tabs = [...document.querySelectorAll('.tabs [data-tab]')], i = tabs.findIndex(b => b.getAttribute('aria-selected') === 'true');
+  const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; setTab(n.dataset.tab); n.focus();
+});
+document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => { S.fg = b.dataset.fg; S.bg = b.dataset.bg; S.trans = false; syncColorUI(); refresh(); }));
+function isDark() { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme:dark)').matches; }
+function themeIcon() { $('themeBtn').innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${isDark() ? 'sun' : 'moon'}"/></svg>`; $('themeBtn').setAttribute('aria-label', isDark() ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'); }
+$('themeBtn').addEventListener('click', () => { const n = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('qr_theme', n); } catch {} themeIcon(); });
+matchMedia('(prefers-color-scheme:dark)').addEventListener?.('change', themeIcon);
+themeIcon();
+
+/* ---------- início ---------- */
+(async function boot() {
+  const saved = lsGet(LS_STATE, null);
+  if (saved && typeof saved === 'object') {
+    S = { ...DEFAULT, ...saved, fg: normHex(saved.fg) || DEFAULT.fg, bg: normHex(saved.bg) || DEFAULT.bg, ec: 'LMQH'.includes(saved.ec) ? saved.ec : 'H', lSz: Math.min(40, Math.max(10, +saved.lSz || 25)) };
+    if (S.logo) { try { LI = await loadImage(S.logo); } catch { S.logo = null; } }
+  }
+  syncColorUI(); refresh(false); renderLib();
+  addEventListener('resize', () => refresh(false));
+})();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+</script>
+</body>
+</html>
