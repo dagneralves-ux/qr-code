@@ -1,0 +1,8 @@
+GERADOR DE QR CODE v3 (PWA)
+
+COMO USAR: suba a pasta inteira (index.html, style.css, app.js, qr.js, sw.js, manifest.json, icons/, fonts/) para o mesmo lugar onde o sistema antigo estava (GitHub Pages, Netlify...). Caminhos relativos.
+- No mesmo endereço do sistema antigo, o último QR e a biblioteca antiga são trazidos sozinhos para a biblioteca nova.
+- Em outro endereço: no sistema antigo use "Exportar backup" e aqui "Importar backup" (aceita o formato antigo).
+
+NOVIDADES: tipos (Link, WhatsApp, Wi-Fi, Contato, E-mail, Telefone, SMS, Texto), módulos (quadrado, arredondado, pontos, traços), olhos, gradiente, moldura com texto, logo redonda, Testar leitura, lote em ZIP, folha para imprimir, biblioteca com busca e etiquetas (IndexedDB), recentes, atalhos (?).
+Tudo roda no aparelho; nada é enviado.
